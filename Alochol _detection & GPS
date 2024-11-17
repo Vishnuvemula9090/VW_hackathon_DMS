@@ -1,0 +1,79 @@
+#include <SoftwareSerial.h>
+#include <TinyGPS++.h>
+
+// SIM800L and GPS Module Pins
+SoftwareSerial sim800Serial(7, 6);  // SIM800L (RX, TX)
+SoftwareSerial gpsSerial(4, 3);     // GPS Module (RX, TX)
+
+// Initialize TinyGPS++ library
+TinyGPSPlus gps;
+
+// MQ-3 Sensor Pin
+const int MQ3Pin = A0;
+
+// Alcohol level threshold (adjust based on calibration)
+const int ALCOHOL_THRESHOLD = 300;
+
+// Helper function to send SMS
+void sendSMS(String message) {
+  sim800Serial.println("AT+CMGF=1"); // Set SMS mode to text
+  delay(1000);
+  sim800Serial.println("AT+CMGS=\"+1234567890\""); // Replace with recipient's phone number
+  delay(1000);
+  sim800Serial.println(message); // SMS content
+  sim800Serial.write(26); // ASCII code for Ctrl+Z to send SMS
+  delay(5000);
+  Serial.println("SMS sent!");
+}
+
+void setup() {
+  // Initialize serial communication for debugging
+  Serial.begin(9600);
+
+  // Initialize GPS module
+  gpsSerial.begin(9600);
+
+  // Initialize SIM800L module
+  sim800Serial.begin(9600);
+
+  // MQ-3 sensor setup
+  pinMode(MQ3Pin, INPUT);
+
+  Serial.println("Driver Monitoring System Initialized");
+}
+
+void loop() {
+  // Read alcohol level from MQ-3 sensor
+  int alcoholLevel = analogRead(MQ3Pin);
+  Serial.print("Alcohol Level: ");
+  Serial.println(alcoholLevel);
+
+  // Variables to store GPS data
+  float latitude = 0.0, longitude = 0.0;
+
+  // Read GPS data
+  while (gpsSerial.available() > 0) {
+    if (gps.encode(gpsSerial.read())) {
+      if (gps.location.isValid()) {
+        latitude = gps.location.lat();
+        longitude = gps.location.lng();
+        Serial.print("Latitude: ");
+        Serial.print(latitude, 6);
+        Serial.print(" | Longitude: ");
+        Serial.println(longitude, 6);
+      }
+    }
+  }
+
+  // Check alcohol level and send alert if necessary
+  if (alcoholLevel > ALCOHOL_THRESHOLD) {
+    Serial.println("Alcohol Level Exceeded! Sending Alert...");
+    String alertMessage = "Alert: High alcohol detected!\n";
+    alertMessage += "Location: Lat=" + String(latitude, 6) + ", Lng=" + String(longitude, 6) + "\n";
+    alertMessage += "Alcohol Level: " + String(alcoholLevel);
+    sendSMS(alertMessage);
+  }
+
+  // Delay for stability (adjust as needed)
+  delay(5000);
+}
