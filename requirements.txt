@@ -1,0 +1,7 @@
+dlib>=19.16.0
+imutils>=0.5.2
+numpy>=1.19.5  # Latest for wide compatibility
+opencv-python>=4.8.0.76  # Modern version compatible with Python 3.12
+playsound>=1.2.2
+scipy>=1.8.1  # Compatible with recent numpy
+pygame
